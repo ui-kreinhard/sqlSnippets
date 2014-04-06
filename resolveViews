@@ -1,0 +1,39 @@
+ WITH RECURSIVE resolve_view_hierarchy(level,view_name, table_name, view_definition) AS (
+        SELECT 
+		1 as level, 
+		vt.view_name, 
+		vt.view_name, 
+		ivw.view_definition::varchar
+        FROM 
+		information_schema.view_table_usage vt
+        inner join 
+		INFORMATION_SCHEMA.views ivw on  
+		vt.view_name = ivw.table_name	
+        UNION
+        SELECT 
+		parent.level+1, 
+		parent.view_name, 
+		sub_view.table_name, 
+		replace(
+		replace(
+		replace(
+		regexp_replace(parent.view_definition, ';$', ''), 
+		sub_view.table_name||'.','+'||sub_view.table_name||'+')
+		, ' '||sub_view.table_name, ' /*subview '|| sub_view.table_name ||' */('||regexp_replace(ivw.view_definition, ';$','')||') ' || sub_view.table_name)
+		, '+'||sub_view.table_name||'+', sub_view.table_name||'.')
+		 as view_definition
+        FROM 
+		resolve_view_hierarchy parent
+                inner join 
+			information_schema.view_table_usage sub_view ON 
+			sub_view.view_name::text = parent.table_name::text 
+			and sub_view.table_name::text <> parent.table_name::text
+                inner join 
+			INFORMATION_SCHEMA.views ivw on  
+			ivw.table_name = sub_view.table_name
+
+        )
+     
+        select * from resolve_view_hierarchy   rsv
+	where view_name = 'test4'
+        order by view_name,level
