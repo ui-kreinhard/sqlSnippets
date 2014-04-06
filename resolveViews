@@ -15,13 +15,23 @@
 		parent.view_name, 
 		sub_view.table_name, 
 		replace(
-		replace(
-		replace(
-		regexp_replace(parent.view_definition, ';$', ''), 
-		sub_view.table_name||'.','+'||sub_view.table_name||'+')
-		, ' '||sub_view.table_name, ' /*subview '|| sub_view.table_name ||' */('||regexp_replace(ivw.view_definition, ';$','')||') ' || sub_view.table_name)
-		, '+'||sub_view.table_name||'+', sub_view.table_name||'.')
-		 as view_definition
+			replace(
+				replace(
+					-- remove ; at the end of the sql 
+					regexp_replace(parent.view_definition, ';$', ''), 
+					-- escape tablenames in projection
+					sub_view.table_name||'.','+'||sub_view.table_name||'+'
+				),
+				' '||sub_view.table_name, 
+				-- replace view name with sql statement
+				-- add comment with the original view name
+				-- remove ; at the end of the sql
+				' /*subview '|| sub_view.table_name ||' */('||regexp_replace(ivw.view_definition, ';$','')||') ' || sub_view.table_name
+			), 
+			-- unescape table name in projection
+			'+'||sub_view.table_name||'+', 
+			sub_view.table_name||'.'
+		 ) as view_definition
         FROM 
 		resolve_view_hierarchy parent
                 inner join 
